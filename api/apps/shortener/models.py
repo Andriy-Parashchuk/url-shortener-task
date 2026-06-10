@@ -35,7 +35,7 @@ class ClickEvent(models.Model):
     device_type = models.CharField(max_length=50)
 
     def __str__(self):
-        return f"Click on {self.short_url.short_code} at {self.timestamp}"
+        return f"Click on {self.short_url.short_code} at {self.clicked_at}"
 
     class Meta:
         indexes = [

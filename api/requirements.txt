@@ -5,3 +5,6 @@ djangorestframework-simplejwt
 django-debug-toolbar
 pytest
 pytest-django
+django-user-agents
+redis
+loguru
