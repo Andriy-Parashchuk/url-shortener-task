@@ -22,6 +22,15 @@ class ShortURLViewSet(ModelViewSet):
     def get_queryset(self):
         return ShortURL.objects.filter(owner=self.request.user).annotate(click_count=Count('clicks'))
 
+    def retrieve(self, request, *args, **kwargs):
+        short_url = self.get_object()
+        recent_clicks = ClickEvent.objects.filter(short_url=short_url).order_by('-clicked_at')[:10]
+        data = self.get_serializer(short_url).data
+
+        data['recent_clicks'] = ClickEventSerializer(recent_clicks, many=True).data
+
+        return Response(data)
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid()
@@ -69,6 +78,7 @@ class ShortURLViewSet(ModelViewSet):
         )
 
         return Response({
+            "click_count": ClickEvent.objects.filter(short_url_id=pk).aggregate(total_clicks=Count('id'))['total_clicks'],
             "clicks_by_day": clicks_by_day,
             "top_browsers": list(top_browsers),
             "top_os": list(top_os),

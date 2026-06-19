@@ -1,23 +1,18 @@
 import asyncio
 import json
 
-import redis.asyncio as redis
-
 from loguru import logger
 from user_agents import parse
 
-redis_client = redis.Redis(
-    host="redis",
-    port=6379,
-    decode_responses=True,
-)
+from redis_service import get_redis_client
+
+redis_client = get_redis_client()
 
 
-async def process_event(data):
-    event = json.loads(data)
+def enrich_click_event(event):
     user_agent = parse(event["user_agent"])
 
-    click_event = {
+    return {
         **event,
         "short_code": event["short_code"],
         "ip_address": event["ip_address"],
@@ -26,6 +21,10 @@ async def process_event(data):
         "device": user_agent.device.family,
     }
 
+
+async def process_event(redis_client, data):
+    event = json.loads(data)
+    click_event = enrich_click_event(event)
     logger.info(f"Processed click event: {click_event}")
     await redis_client.publish("clicks:enriched", json.dumps(click_event))
 
@@ -39,7 +38,7 @@ async def main():
         if message["type"] != "message":
             continue
 
-        asyncio.create_task(process_event(message['data']))
+        asyncio.create_task(process_event(redis_client, message['data']))
 
 
 if __name__ == "__main__":

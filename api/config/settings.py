@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -20,11 +21,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-6mhotiy-ur0emun!d*n^l5*d%csi=yzox9ujy@@!xz-b5yy!wp'
+DEBUG = os.getenv("DEBUG", "False")
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG", default=False)
+DATABASES = {
+    "default": os.getenv("DATABASE_URL", "sqlite:///db.sqlite3"),
+}
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -42,8 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'debug_toolbar'
+    'django.contrib.staticfiles'
 ]
 
 REST_FRAMEWORK = {
@@ -65,7 +67,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_user_agents.middleware.UserAgentMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
 
 ]
 
@@ -153,3 +154,8 @@ INTERNAL_IPS = [
 DEBUG_TOOLBAR_CONFIG = {
     "SHOW_TOOLBAR_CALLBACK": lambda request: True,
 }
+
+TESTING = 'pytest' in sys.modules or 'test' in sys.argv
+if DEBUG and not TESTING:
+    INSTALLED_APPS.append('debug_toolbar')
+    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
