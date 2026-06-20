@@ -2,6 +2,7 @@ import json
 from datetime import timedelta
 
 from django.db.models.functions import TruncDate
+from django.http import Http404
 from django.utils import timezone
 from django.db.models import Count
 from django.shortcuts import redirect, get_object_or_404
@@ -35,6 +36,7 @@ class ShortURLViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid()
         serializer.save(owner=request.user)
+        logger.info(f"Short URL created. user_id={request.user.id}, short_code={serializer.data['short_code']}")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"])
@@ -110,7 +112,11 @@ class ShortURLViewSet(ModelViewSet):
 
 
 def redirect_view(request, short_code):
-    url = get_object_or_404(ShortURL, short_code=short_code)
+    try:
+        url = ShortURL.objects.get(short_code=short_code)
+    except ShortURL.DoesNotExist:
+        logger.warning("Short URL not found",short_code=short_code)
+        raise Http404("Short URL not found")
 
     event = {
         "short_code": short_code,
@@ -121,15 +127,12 @@ def redirect_view(request, short_code):
             "HTTP_USER_AGENT"
         ),
     }
-    logger.info(
-        f"Publishing click for {short_code}"
-    )
-    logger.info(
-        f"Event {event}"
-    )
-    redis_client.publish(
-        "clicks:raw",
-        json.dumps(event)
-    )
+    logger.info(f"Publishing click for {short_code}")
+    logger.info(f"Event {event}")
+
+    try:
+        redis_client.publish("clicks:raw",json.dumps(event))
+    except Exception:
+        logger.exception(f"Failed to publish click event for {short_code}")
 
     return redirect(url.original_url)

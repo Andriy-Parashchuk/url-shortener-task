@@ -24,8 +24,12 @@ def enrich_click_event(event):
 
 async def process_event(redis_client, data):
     event = json.loads(data)
-    click_event = enrich_click_event(event)
-    logger.info(f"Processed click event: {click_event}")
+    try:
+        click_event = enrich_click_event(event)
+        logger.info(f"Processed click event: {click_event}")
+    except Exception:
+        logger.exception(f"Error processing click event")
+        return
     await redis_client.publish("clicks:enriched", json.dumps(click_event))
 
 
